@@ -15,104 +15,64 @@
             --orange: #ea580c; --orange-bg: rgba(234, 88, 12, 0.15);
             --gray: #6b7280; --gray-bg: rgba(107, 114, 128, 0.12);
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg); color: var(--text-primary); padding: 24px; min-height: 100vh;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 32px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 40px; }
-        .tile {
-            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-            padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 8px;
-        }
-        .tile-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
-        .tile-value { font-size: 18px; font-weight: 700; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto 40px; }
+        .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+        .tile-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; }
+        .tile-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
         .tile-detail { font-size: 12px; color: var(--text-muted); }
-        
-        /* State colors */
-        .state-green { border-color: var(--green); background: var(--green-bg); }
-        .state-green .tile-value { color: var(--green); }
-        .state-red { border-color: var(--red); background: var(--red-bg); }
-        .state-red .tile-value { color: var(--red); }
-
-        .settings-panel {
-            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-            padding: 24px; max-width: 600px; margin: 0 auto;
-        }
-        .settings-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .state-green { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+        .state-red { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+        .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px; margin: 0 auto; }
         .form-group { margin-bottom: 16px; }
-        label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
-        select, input {
-            width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-            padding: 10px; color: var(--text-primary); font-size: 14px;
-        }
-        .btn-save {
-            background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px;
-            font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;
-        }
-        .btn-save:hover { background: #2ea043; }
+        label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--text-secondary); }
+        input, select { width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: white; }
+        .btn { background: #238636; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Market Regime Dashboard v2</h1>
-            <p id="timestamp" class="tile-detail">Loading...</p>
+    <div class="grid" id="dashboard"></div>
+    <div class="settings-panel">
+        <h3>Settings</h3>
+        <div class="form-group">
+            <label>Data Source</label>
+            <select id="source" onchange="updateUI()"><option value="google">Google Sheets</option><option value="twelve">Twelve Data</option></select>
         </div>
-
-        <div class="grid" id="dashboard-grid">
-            <!-- Tiles will be populated here -->
+        <div class="form-group" id="google-grp">
+            <label>Sheet ID or URL</label>
+            <input type="text" id="sheet-id">
         </div>
-
-        <div class="settings-panel">
-            <h2 class="settings-title">Settings</h2>
-            <div class="form-group">
-                <label>Data Source</label>
-                <select id="data-source" onchange="toggleInputs()">
-                    <option value="google">Google Sheets (Recommended)</option>
-                    <option value="twelve">Twelve Data API</option>
-                </select>
-            </div>
-            <div id="google-input" class="form-group">
-                <label>Google Sheet URL or ID</label>
-                <input type="text" id="sheet-id" placeholder="Paste your Sheet ID here">
-            </div>
-            <div id="twelve-input" class="form-group" style="display:none;">
-                <label>Twelve Data API Key</label>
-                <input type="password" id="api-key" placeholder="Enter Twelve Data API Key">
-            </div>
-            <button class="btn-save" onclick="saveSettings()">Save & Refresh</button>
+        <div class="form-group" id="twelve-grp" style="display:none">
+            <label>Twelve Data API Key</label>
+            <input type="password" id="api-key">
         </div>
+        <button class="btn" onclick="save()">Save & Connect</button>
     </div>
-
     <script>
-        function toggleInputs() {
-            const source = document.getElementById('data-source').value;
-            document.getElementById('google-input').style.display = source === 'google' ? 'block' : 'none';
-            document.getElementById('twelve-input').style.display = source === 'twelve' ? 'block' : 'none';
+        function updateUI() {
+            const src = document.getElementById('source').value;
+            document.getElementById('google-grp').style.display = src === 'google' ? 'block' : 'none';
+            document.getElementById('twelve-grp').style.display = src === 'twelve' ? 'block' : 'none';
         }
-
-        function saveSettings() {
-            const settings = {
-                source: document.getElementById('data-source').value,
-                sheetId: document.getElementById('sheet-id').value,
-                apiKey: document.getElementById('api-key').value
-            };
-            localStorage.setItem('marketDashboardSettings', JSON.stringify(settings));
-            alert('Settings saved!');
+        function save() {
+            const data = { source: document.getElementById('source').value, sheet: document.getElementById('sheet-id').value, key: document.getElementById('api-key').value };
+            localStorage.setItem('market_settings', JSON.stringify(data));
             location.reload();
         }
-
-        // Load settings and init
         window.onload = () => {
-            const saved = JSON.parse(localStorage.getItem('marketDashboardSettings')) || {};
-            if (saved.source) document.getElementById('data-source').value = saved.source;
-            if (saved.sheetId) document.getElementById('sheet-id').value = saved.sheetId;
-            if (saved.apiKey) document.getElementById('api-key').value = saved.apiKey;
-            toggleInputs();
-            document.getElementById('timestamp').innerText = 'Last updated: ' + new Date().toLocaleString();
-        };
+            const s = JSON.parse(localStorage.getItem('market_settings')) || {};
+            if(s.source) document.getElementById('source').value = s.source;
+            if(s.sheet) document.getElementById('sheet-id').value = s.sheet;
+            if(s.key) document.getElementById('api-key').value = s.key;
+            updateUI();
+            const tiles = [
+                {label:'T2108 Zone', value:'Crash (<20)', detail:'T2108: 17', state:'red'},
+                {label:'SPY 20D Trend', value:'SPY < 20D', detail:'SPY: 548.20 | 20D: 555.40', state:'red'},
+                {label:'VIX Regime', value:'High (>=20)', detail:'VIX: 24.6', state:'red'},
+                {label:'Risk-ON Score', value:'Score 2/4', detail:'Balanced', state:'red'}
+            ];
+            document.getElementById('dashboard').innerHTML = tiles.map(t => `<div class="tile state-${t.state}"><div class="tile-label">${t.label}</div><div class="tile-value">${t.value}</div><div class="tile-detail">${t.detail}</div></div>`).join('');
+        }
     </script>
 </body>
 </html>

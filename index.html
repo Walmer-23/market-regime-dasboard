@@ -46,7 +46,7 @@ input,select{width:100%;padding:10px;background:var(--bg);border:1px solid var(-
 function toggleUI(){const s=document.getElementById('source').value;document.getElementById('google-grp').style.display=s==='google'?'block':'none';document.getElementById('twelve-grp').style.display=s==='twelve'?'block':'none'}
 function save(){const d={source:document.getElementById('source').value,sheet:document.getElementById('sheet-id').value,key:document.getElementById('api-key').value};localStorage.setItem('market_settings',JSON.stringify(d));location.reload()}
 
-async function fetchSheetData(sheetId){try{const url=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;const r=await fetch(url);const t=await r.text();const j=JSON.parse(t.substring(47,t.length-2));const rows=j.table.rows;return{t2108:rows[0]?.c[1]?.v||0,spyPrice:rows[1]?.c[1]?.v||0,vix:rows[2]?.c[1]?.v||0,dxy:rows[3]?.c[1]?.v||0,dxy50d:rows[4]?.c[1]?.v||0,yield10:rows[5]?.c[1]?.v||0}}catch(e){return null}}
+async function fetchSheetData(sheetId){try{const url=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?gid=410602710&tqx=out:json`;const r=await fetch(url);const t=await r.text();const j=JSON.parse(t.substring(47,t.length-2));const rows=j.table.rows;return{t2108:rows[0]?.c[1]?.v||0,spyPrice:rows[1]?.c[1]?.v||0,vix:rows[2]?.c[1]?.v||0,dxy:rows[3]?.c[1]?.v||0,dxy50d:rows[4]?.c[1]?.v||0,yield10:rows[5]?.c[1]?.v||0}}catch(e){return null}}
 
 async function fetchSpySma(key){try{const r=await fetch(`https://api.twelvedata.com/sma?symbol=SPY&interval=1day&time_period=20&apikey=${key}`);const d=await r.json();if(d.status==='error')throw new Error(d.message);return parseFloat(d.values[0].sma)}catch(e){return null}}
 

@@ -28,15 +28,20 @@
         label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--text-secondary); }
         input, select { width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: white; }
         .btn { background: #238636; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
+        .error { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; display: none; }
     </style>
 </head>
 <body>
     <div class="grid" id="dashboard"></div>
+    <div id="error-msg" class="error"></div>
     <div class="settings-panel">
         <h3>Settings</h3>
         <div class="form-group">
             <label>Data Source</label>
-            <select id="source" onchange="updateUI()"><option value="google">Google Sheets</option><option value="twelve">Twelve Data</option></select>
+            <select id="source" onchange="updateUI()">
+                <option value="google">Google Sheets (Recommended)</option>
+                <option value="twelve">Twelve Data API</option>
+            </select>
         </div>
         <div class="form-group" id="google-grp">
             <label>Sheet ID or URL</label>
@@ -59,18 +64,60 @@
             localStorage.setItem('market_settings', JSON.stringify(data));
             location.reload();
         }
-        window.onload = () => {
+
+        async function fetchTwelveData(key) {
+            try {
+                const resp = await fetch(`https://api.twelvedata.com/complex_data?apikey=${key}`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        symbols: ["SPY", "VIX"],
+                        intervals: ["1day"],
+                        methods: [
+                            {name: "price"},
+                            {name: "sma", params: {time_period: 20}}
+                        ]
+                    })
+                });
+                const data = await resp.json();
+                if(data.status === 'error') throw new Error(data.message);
+                
+                const spy = data.data.find(d => d.symbol === 'SPY');
+                const vix = data.data.find(d => d.symbol === 'VIX');
+                
+                const spyPrice = parseFloat(spy.methods.find(m => m.name === 'price').price);
+                const spySma = parseFloat(spy.methods.find(m => m.name === 'sma').values[0].sma);
+                const vixPrice = parseFloat(vix.methods.find(m => m.name === 'price').price);
+
+                return [
+                    {label:'SPY 20D Trend', value: spyPrice > spySma ? 'SPY > 20D' : 'SPY < 20D', detail: `SPY: ${spyPrice.toFixed(2)} | 20D: ${spySma.toFixed(2)}`, state: spyPrice > spySma ? 'green' : 'red'},
+                    {label:'VIX Regime', value: vixPrice < 20 ? 'Low (<20)' : 'High (>=20)', detail: `VIX: ${vixPrice.toFixed(1)}`, state: vixPrice < 20 ? 'green' : 'red'}
+                ];
+            } catch (e) {
+                document.getElementById('error-msg').innerText = 'API Error: ' + e.message;
+                document.getElementById('error-msg').style.display = 'block';
+                return [];
+            }
+        }
+
+        window.onload = async () => {
             const s = JSON.parse(localStorage.getItem('market_settings')) || {};
             if(s.source) document.getElementById('source').value = s.source;
             if(s.sheet) document.getElementById('sheet-id').value = s.sheet;
             if(s.key) document.getElementById('api-key').value = s.key;
             updateUI();
-            const tiles = [
-                {label:'T2108 Zone', value:'Crash (<20)', detail:'T2108: 17', state:'red'},
-                {label:'SPY 20D Trend', value:'SPY < 20D', detail:'SPY: 548.20 | 20D: 555.40', state:'red'},
-                {label:'VIX Regime', value:'High (>=20)', detail:'VIX: 24.6', state:'red'},
-                {label:'Risk-ON Score', value:'Score 2/4', detail:'Balanced', state:'red'}
+
+            let tiles = [
+                {label:'T2108 Zone', value:'Manual Entry', detail:'Update in sheet', state:'gray'},
+                {label:'Risk-ON Score', value:'Wait...', detail:'Calculating...', state:'gray'}
             ];
+
+            if(s.source === 'twelve' && s.key) {
+                const apiTiles = await fetchTwelveData(s.key);
+                tiles = [...tiles, ...apiTiles];
+            } else if (s.source === 'google' && s.sheet) {
+                tiles.push({label:'Source', value:'Google Sheets', detail:'Fetching...', state:'gray'});
+            }
+
             document.getElementById('dashboard').innerHTML = tiles.map(t => `<div class="tile state-${t.state}"><div class="tile-label">${t.label}</div><div class="tile-value">${t.value}</div><div class="tile-detail">${t.detail}</div></div>`).join('');
         }
     </script>

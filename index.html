@@ -46,7 +46,7 @@
             <input type="text" id="sheet-id">
         </div>
         <div class="form-group" id="twelve-grp" style="display:none">
-            <label>Twelve Data API Key (Required for SPY 20D SMA)</label>
+            <label>Twelve Data API Key (For SPY 20D SMA)</label>
             <input type="password" id="api-key">
         </div>
         <button class="btn" onclick="save()">Save & Connect</button>
@@ -67,30 +67,19 @@
             location.reload();
         }
 
-        async function fetchSpyTrend(key) {
+        async function fetchSpyData(key) {
             try {
-                // Fetch SPY price and 20D SMA in one call
-                const url = `https://api.twelvedata.com/complex_data?apikey=${key}`;
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        symbols: ["SPY"],
-                        intervals: ["1day"],
-                        methods: [
-                            {name: "price"},
-                            {name: "sma", params: {time_period: 20}}
-                        ]
-                    })
-                });
-                const result = await resp.json();
-                
-                if (result.status === 'error' || !result.data || !result.data[0]) {
-                    throw new Error(result.message || "Invalid API response");
-                }
+                // Simplest possible fetch
+                const pResp = await fetch(`https://api.twelvedata.com/price?symbol=SPY&apikey=${key}`);
+                const pData = await pResp.json();
+                if (pData.status === 'error') throw new Error(pData.message);
 
-                const data = result.data[0];
-                const price = parseFloat(data.methods.find(m => m.name === 'price').price);
-                const sma = parseFloat(data.methods.find(m => m.name === 'sma').values[0].sma);
+                const sResp = await fetch(`https://api.twelvedata.com/sma?symbol=SPY&interval=1day&time_period=20&apikey=${key}`);
+                const sData = await sResp.json();
+                if (sData.status === 'error') throw new Error(sData.message);
+
+                const price = parseFloat(pData.price);
+                const sma = parseFloat(sData.values[0].sma);
 
                 return {
                     label: 'SPY 20D Trend',
@@ -99,9 +88,7 @@
                     state: price > sma ? 'green' : 'red'
                 };
             } catch (e) {
-                document.getElementById('error-msg').innerText = 'Twelve Data Error: ' + e.message;
-                document.getElementById('error-msg').style.display = 'block';
-                return { label: 'SPY 20D Trend', value: 'Error', detail: e.message, state: 'red' };
+                return { label: 'SPY 20D Trend', value: 'API Error', detail: e.message, state: 'red' };
             }
         }
 
@@ -112,25 +99,20 @@
             if(s.key) document.getElementById('api-key').value = s.key;
             updateUI();
 
-            const dashboard = document.getElementById('dashboard');
             const tiles = [];
+            tiles.push({label:'T2108 Zone', value:'Manual', detail:'Update in sheet', state:'gray'});
 
-            // T2108 (Static for now, usually from Sheet)
-            tiles.push({label:'T2108 Zone', value:'Manual Entry', detail:'Update in sheet', state:'gray'});
-
-            // SPY 20D Trend (From Twelve Data)
             if (s.key) {
-                const spyTile = await fetchSpyTrend(s.key);
+                const spyTile = await fetchSpyData(s.key);
                 tiles.push(spyTile);
             } else {
-                tiles.push({label:'SPY 20D Trend', value:'No Key', detail:'Enter Twelve Data API Key', state:'gray'});
+                tiles.push({label:'SPY 20D Trend', value:'No Key', detail:'Enter Key below', state:'gray'});
             }
 
-            // Other placeholders
-            tiles.push({label:'VIX Regime', value:'Sheet Data', detail:'Fetching...', state:'gray'});
-            tiles.push({label:'Risk-ON Score', value:'Balanced', detail:'Wait for data...', state:'gray'});
+            tiles.push({label:'VIX Regime', value:'Sheet Data', detail:'Wait for Sheet ID', state:'gray'});
+            tiles.push({label:'Risk-ON Score', value:'Wait...', detail:'Calculating...', state:'gray'});
 
-            dashboard.innerHTML = tiles.map(t => `
+            document.getElementById('dashboard').innerHTML = tiles.map(t => `
                 <div class="tile state-${t.state}">
                     <div class="tile-label">${t.label}</div>
                     <div class="tile-value">${t.value}</div>

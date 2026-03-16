@@ -1,459 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!--
-   ______                            __
-  / ____/___  ____ ___  ____  __  __/ /____  _____
- / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
-/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
-\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
-                    /_/
-        Created with Perplexity Computer
-        https://www.perplexity.ai/computer
--->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Regime Dashboard v2</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0e1117; --surface: #1a1d26; --border: #2a2d38;
+            --text-primary: #e8eaed; --text-secondary: #9aa0a6; --text-muted: #6b7280;
+            --green: #16a34a; --green-bg: rgba(22, 163, 74, 0.15);
+            --red: #dc2626; --red-bg: rgba(220, 38, 38, 0.15);
+            --yellow: #ca8a04; --yellow-bg: rgba(202, 138, 4, 0.15);
+            --orange: #ea580c; --orange-bg: rgba(234, 88, 12, 0.15);
+            --gray: #6b7280; --gray-bg: rgba(107, 114, 128, 0.12);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text-primary); padding: 24px; min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 32px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 40px; }
+        .tile {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 8px;
+        }
+        .tile-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
+        .tile-value { font-size: 18px; font-weight: 700; }
+        .tile-detail { font-size: 12px; color: var(--text-muted); }
+        
+        /* State colors */
+        .state-green { border-color: var(--green); background: var(--green-bg); }
+        .state-green .tile-value { color: var(--green); }
+        .state-red { border-color: var(--red); background: var(--red-bg); }
+        .state-red .tile-value { color: var(--red); }
 
-<!-- Perplexity Computer Attribution — SEO Meta Tags -->
-<meta name="generator" content="Perplexity Computer">
-<meta name="author" content="Perplexity Computer">
-<meta property="og:see_also" content="https://www.perplexity.ai/computer">
-<link rel="author" href="https://www.perplexity.ai/computer">
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Market Regime Dashboard v1</title>
-<style>
-  *,
-  *::before,
-  *::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  :root {
-    --bg: #0e1117;
-    --surface: #1a1d26;
-    --border: #2a2d38;
-    --text-primary: #e8eaed;
-    --text-secondary: #9aa0a6;
-    --text-muted: #6b7280;
-
-    --green: #16a34a;
-    --green-bg: rgba(22, 163, 74, 0.15);
-    --red: #dc2626;
-    --red-bg: rgba(220, 38, 38, 0.15);
-    --yellow: #ca8a04;
-    --yellow-bg: rgba(202, 138, 4, 0.15);
-    --orange: #ea580c;
-    --orange-bg: rgba(234, 88, 12, 0.15);
-    --gray: #6b7280;
-    --gray-bg: rgba(107, 114, 128, 0.12);
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text-primary);
-    min-height: 100vh;
-    padding: 24px;
-  }
-
-  .dashboard-header {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-
-  .dashboard-header h1 {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--text-primary);
-  }
-
-  .dashboard-header .timestamp {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 6px;
-  }
-
-  .row {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
-    justify-content: center;
-  }
-
-  .tile {
-    flex: 1;
-    max-width: 260px;
-    min-width: 160px;
-    border-radius: 12px;
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    transition: background 0.2s ease, border-color 0.2s ease;
-  }
-
-  .tile-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-  }
-
-  .tile-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    transition: background 0.2s ease;
-  }
-
-  .tile-value {
-    font-size: 16px;
-    font-weight: 700;
-    text-align: center;
-    line-height: 1.3;
-  }
-
-  .tile-detail {
-    font-size: 12px;
-    color: var(--text-muted);
-    text-align: center;
-  }
-
-  /* State colors */
-  .tile.state-green {
-    background: var(--green-bg);
-    border-color: var(--green);
-  }
-  .tile.state-green .tile-indicator { background: var(--green); }
-  .tile.state-green .tile-value { color: var(--green); }
-
-  .tile.state-red {
-    background: var(--red-bg);
-    border-color: var(--red);
-  }
-  .tile.state-red .tile-indicator { background: var(--red); }
-  .tile.state-red .tile-value { color: var(--red); }
-
-  .tile.state-yellow {
-    background: var(--yellow-bg);
-    border-color: var(--yellow);
-  }
-  .tile.state-yellow .tile-indicator { background: var(--yellow); }
-  .tile.state-yellow .tile-value { color: var(--yellow); }
-
-  .tile.state-orange {
-    background: var(--orange-bg);
-    border-color: var(--orange);
-  }
-  .tile.state-orange .tile-indicator { background: var(--orange); }
-  .tile.state-orange .tile-value { color: var(--orange); }
-
-  .tile.state-gray {
-    background: var(--gray-bg);
-    border-color: var(--gray);
-  }
-  .tile.state-gray .tile-indicator { background: var(--gray); }
-  .tile.state-gray .tile-value { color: var(--gray); }
-
-  /* Responsive */
-  @media (max-width: 900px) {
-    .row { flex-wrap: wrap; }
-    .tile { max-width: 100%; min-width: 140px; }
-  }
-
-  @media (max-width: 500px) {
-    body { padding: 16px; }
-    .row { gap: 10px; }
-    .tile { padding: 16px 12px; }
-  }
-
-  footer {
-    text-align: center;
-    margin-top: 40px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  footer a {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-decoration: none;
-  }
-
-  footer a:hover {
-    color: var(--text-secondary);
-    text-decoration: underline;
-  }
-</style>
+        .settings-panel {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; max-width: 600px; margin: 0 auto;
+        }
+        .settings-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+        select, input {
+            width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px; color: var(--text-primary); font-size: 14px;
+        }
+        .btn-save {
+            background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px;
+            font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;
+        }
+        .btn-save:hover { background: #2ea043; }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>Market Regime Dashboard v2</h1>
+            <p id="timestamp" class="tile-detail">Loading...</p>
+        </div>
 
-<div class="dashboard-header">
-  <h1>Market Regime Dashboard v1</h1>
-  <div class="timestamp" id="timestamp"></div>
-</div>
+        <div class="grid" id="dashboard-grid">
+            <!-- Tiles will be populated here -->
+        </div>
 
-<!-- Row 1: 5 tiles -->
-<div class="row">
-  <div class="tile" id="tile-t2108">
-    <span class="tile-label">T2108 Zone</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-spy20d">
-    <span class="tile-label">SPY 20D Trend</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-vix">
-    <span class="tile-label">VIX Regime</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-macro">
-    <span class="tile-label">Macro Profile</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-dxy">
-    <span class="tile-label">DXY Environment</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-</div>
+        <div class="settings-panel">
+            <h2 class="settings-title">Settings</h2>
+            <div class="form-group">
+                <label>Data Source</label>
+                <select id="data-source" onchange="toggleInputs()">
+                    <option value="google">Google Sheets (Recommended)</option>
+                    <option value="twelve">Twelve Data API</option>
+                </select>
+            </div>
+            <div id="google-input" class="form-group">
+                <label>Google Sheet URL or ID</label>
+                <input type="text" id="sheet-id" placeholder="Paste your Sheet ID here">
+            </div>
+            <div id="twelve-input" class="form-group" style="display:none;">
+                <label>Twelve Data API Key</label>
+                <input type="password" id="api-key" placeholder="Enter Twelve Data API Key">
+            </div>
+            <button class="btn-save" onclick="saveSettings()">Save & Refresh</button>
+        </div>
+    </div>
 
-<!-- Row 2: 3 tiles -->
-<div class="row">
-  <div class="tile" id="tile-cycle-state">
-    <span class="tile-label">Cycle State</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-cycle-age">
-    <span class="tile-label">Cycle Age</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-  <div class="tile" id="tile-riskon-score">
-    <span class="tile-label">Risk-ON Score</span>
-    <span class="tile-indicator"></span>
-    <span class="tile-value"></span>
-    <span class="tile-detail"></span>
-  </div>
-</div>
+    <script>
+        function toggleInputs() {
+            const source = document.getElementById('data-source').value;
+            document.getElementById('google-input').style.display = source === 'google' ? 'block' : 'none';
+            document.getElementById('twelve-input').style.display = source === 'twelve' ? 'block' : 'none';
+        }
 
-<footer>
-  <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">
-    Created with Perplexity Computer
-  </a>
-</footer>
+        function saveSettings() {
+            const settings = {
+                source: document.getElementById('data-source').value,
+                sheetId: document.getElementById('sheet-id').value,
+                apiKey: document.getElementById('api-key').value
+            };
+            localStorage.setItem('marketDashboardSettings', JSON.stringify(settings));
+            alert('Settings saved!');
+            location.reload();
+        }
 
-<script>
-/* ============================================================
-   MOCK DATA — swap this object with real data later
-   ============================================================ */
-const mockData = {
-  t2108: 17,
-  spyPrice: 548.20,
-  spy20d: 555.40,
-  spyChangePct: -0.35,
-  vix: 24.6,
-  dxy: 103.8,
-  dxy50d: 104.5,
-  dxyChangePct: -0.22,
-  yield10: 4.28,
-  yield10ChangeBp: -3.5,
-  history: {
-    lastCycleFlipDate: '2026-02-25',
-    currentCycle: 'RISK_OFF'
-  }
-};
-
-/* ============================================================
-   HELPER: set tile state (color + text)
-   ============================================================ */
-function setTile(tileId, state, value, detail) {
-  const tile = document.getElementById(tileId);
-  // Remove all state classes
-  tile.classList.remove('state-green', 'state-red', 'state-yellow', 'state-orange', 'state-gray');
-  tile.classList.add('state-' + state);
-  tile.querySelector('.tile-value').textContent = value;
-  tile.querySelector('.tile-detail').textContent = detail || '';
-}
-
-/* ============================================================
-   TILE UPDATE FUNCTIONS
-   ============================================================ */
-
-function updateT2108(data) {
-  const val = data.t2108;
-  if (val < 20) {
-    setTile('tile-t2108', 'red', 'Crash (<20)', 'T2108: ' + val);
-  } else if (val > 80) {
-    setTile('tile-t2108', 'orange', 'Hot (>80)', 'T2108: ' + val);
-  } else {
-    setTile('tile-t2108', 'gray', 'Normal (20\u201380)', 'T2108: ' + val);
-  }
-}
-
-function updateSpy20dTrend(data) {
-  if (data.spyPrice > data.spy20d) {
-    setTile('tile-spy20d', 'green', 'SPY > 20D',
-      'SPY: ' + data.spyPrice.toFixed(2) + '  |  20D: ' + data.spy20d.toFixed(2));
-  } else {
-    setTile('tile-spy20d', 'red', 'SPY < 20D',
-      'SPY: ' + data.spyPrice.toFixed(2) + '  |  20D: ' + data.spy20d.toFixed(2));
-  }
-}
-
-function updateVixRegime(data) {
-  if (data.vix < 20) {
-    setTile('tile-vix', 'green', 'VIX < 20 (Low)', 'VIX: ' + data.vix.toFixed(1));
-  } else {
-    setTile('tile-vix', 'red', 'VIX \u2265 20 (High)', 'VIX: ' + data.vix.toFixed(1));
-  }
-}
-
-function updateMacroProfile(data) {
-  const spyUp = data.spyChangePct > 0;
-  const spyAbove20 = data.spyPrice > data.spy20d;
-  const dxyDown = data.dxyChangePct < 0;
-  const yieldDown = data.yield10ChangeBp < 0;
-
-  let score = 0;
-  if (spyUp && spyAbove20) score++;
-  if (dxyDown) score++;
-  if (yieldDown) score++;
-
-  const parts = [];
-  parts.push('SPY ' + (spyUp ? '\u2191' : '\u2193') + (spyAbove20 ? ' >20D' : ' <20D'));
-  parts.push('DXY ' + (dxyDown ? '\u2193' : '\u2191'));
-  parts.push('10Y ' + (yieldDown ? '\u2193' : '\u2191'));
-
-  if (score === 3) {
-    setTile('tile-macro', 'green', 'Macro Risk\u2011ON', parts.join('  \u00b7  '));
-  } else if (score === 2) {
-    setTile('tile-macro', 'yellow', 'Macro Mixed', parts.join('  \u00b7  '));
-  } else {
-    setTile('tile-macro', 'red', 'Macro Risk\u2011OFF', parts.join('  \u00b7  '));
-  }
-}
-
-function updateDxyEnvironment(data) {
-  const below50 = data.dxy < data.dxy50d;
-  const dxyDown = data.dxyChangePct < 0;
-
-  const detail = 'DXY: ' + data.dxy.toFixed(1) + '  |  50D: ' + data.dxy50d.toFixed(1);
-
-  if (below50 && dxyDown) {
-    setTile('tile-dxy', 'green', 'Tailwind', detail);
-  } else if (!below50 && !dxyDown) {
-    setTile('tile-dxy', 'red', 'Headwind', detail);
-  } else {
-    setTile('tile-dxy', 'gray', 'Neutral', detail);
-  }
-}
-
-function updateCycleState(data) {
-  const cycle = data.history.currentCycle;
-  if (cycle === 'RISK_ON') {
-    setTile('tile-cycle-state', 'green', 'Risk\u2011ON', '');
-  } else if (cycle === 'RISK_OFF') {
-    setTile('tile-cycle-state', 'red', 'Risk\u2011OFF', '');
-  } else {
-    setTile('tile-cycle-state', 'gray', 'Neutral', '');
-  }
-}
-
-function updateCycleAge(data) {
-  const flipDate = new Date(data.history.lastCycleFlipDate + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffMs = today - flipDate;
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  let state, phase;
-  if (days <= 10) {
-    state = 'green';
-    phase = 'Early';
-  } else if (days <= 20) {
-    state = 'yellow';
-    phase = 'Middle';
-  } else {
-    state = 'orange';
-    phase = 'Late';
-  }
-
-  setTile('tile-cycle-age', state, 'Day ' + days + ' \u2013 ' + phase,
-    'Since: ' + data.history.lastCycleFlipDate);
-}
-
-function updateRiskOnScore(data) {
-  let score = 0;
-  if (data.spyChangePct > 0) score++;
-  if (data.yield10ChangeBp < 0) score++;
-  if (data.dxyChangePct < 0) score++;
-  if (data.vix < 20) score++;
-
-  let state, label;
-  if (score <= 1) {
-    state = 'red';
-    label = 'Defensive';
-  } else if (score === 2) {
-    state = 'yellow';
-    label = 'Balanced';
-  } else {
-    state = 'green';
-    label = 'Offensive';
-  }
-
-  const checks = [];
-  checks.push('SPY%: ' + (data.spyChangePct > 0 ? '\u2713' : '\u2717'));
-  checks.push('10Y\u0394: ' + (data.yield10ChangeBp < 0 ? '\u2713' : '\u2717'));
-  checks.push('DXY%: ' + (data.dxyChangePct < 0 ? '\u2713' : '\u2717'));
-  checks.push('VIX<20: ' + (data.vix < 20 ? '\u2713' : '\u2717'));
-
-  setTile('tile-riskon-score', state, 'Score ' + score + '/4 \u2013 ' + label,
-    checks.join('  '));
-}
-
-/* ============================================================
-   INIT
-   ============================================================ */
-function initDashboard() {
-  // Timestamp
-  document.getElementById('timestamp').textContent =
-    'Data as of: ' + new Date().toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-
-  // Update all tiles
-  updateT2108(mockData);
-  updateSpy20dTrend(mockData);
-  updateVixRegime(mockData);
-  updateMacroProfile(mockData);
-  updateDxyEnvironment(mockData);
-  updateCycleState(mockData);
-  updateCycleAge(mockData);
-  updateRiskOnScore(mockData);
-}
-
-document.addEventListener('DOMContentLoaded', initDashboard);
-</script>
+        // Load settings and init
+        window.onload = () => {
+            const saved = JSON.parse(localStorage.getItem('marketDashboardSettings')) || {};
+            if (saved.source) document.getElementById('data-source').value = saved.source;
+            if (saved.sheetId) document.getElementById('sheet-id').value = saved.sheetId;
+            if (saved.apiKey) document.getElementById('api-key').value = saved.apiKey;
+            toggleInputs();
+            document.getElementById('timestamp').innerText = 'Last updated: ' + new Date().toLocaleString();
+        };
+    </script>
 </body>
 </html>

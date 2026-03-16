@@ -1,125 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Market Regime Dashboard v2</title>
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #0e1117; --surface: #1a1d26; --border: #2a2d38;
-            --text-primary: #e8eaed; --text-secondary: #9aa0a6; --text-muted: #6b7280;
-            --green: #16a34a; --green-bg: rgba(22, 163, 74, 0.15);
-            --red: #dc2626; --red-bg: rgba(220, 38, 38, 0.15);
-            --gray: #6b7280; --gray-bg: rgba(107, 114, 128, 0.12);
-        }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); padding: 24px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto 40px; }
-        .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
-        .tile-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; }
-        .tile-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-        .tile-detail { font-size: 12px; color: var(--text-muted); }
-        .state-green { border-color: var(--green); background: var(--green-bg); color: var(--green); }
-        .state-red { border-color: var(--red); background: var(--red-bg); color: var(--red); }
-        .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px; margin: 0 auto; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--text-secondary); }
-        input, select { width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: white; }
-        .btn { background: #238636; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; }
-        .error { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; display: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Regime Dashboard v2</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0e1117;--surface:#1a1d26;--border:#2a2d38;--text-primary:#e8eaed;--text-secondary:#9aa0a6;--text-muted:#6b7280;--green:#16a34a;--green-bg:rgba(22,163,74,0.15);--red:#dc2626;--red-bg:rgba(220,38,38,0.15);--yellow:#ca8a04;--yellow-bg:rgba(202,138,4,0.15);--orange:#ea580c;--orange-bg:rgba(234,88,12,0.15);--gray:#6b7280;--gray-bg:rgba(107,114,128,0.12)}
+body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--text-primary);padding:24px}
+.header{text-align:center;margin-bottom:32px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:1200px;margin:0 auto 40px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center}
+.tile-label{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-secondary);margin-bottom:8px}
+.tile-value{font-size:18px;font-weight:700;margin-bottom:4px}
+.tile-detail{font-size:12px;color:var(--text-muted)}
+.state-green{border-color:var(--green);background:var(--green-bg)}
+.state-green .tile-value{color:var(--green)}
+.state-red{border-color:var(--red);background:var(--red-bg)}
+.state-red .tile-value{color:var(--red)}
+.state-yellow{border-color:var(--yellow);background:var(--yellow-bg)}
+.state-yellow .tile-value{color:var(--yellow)}
+.state-orange{border-color:var(--orange);background:var(--orange-bg)}
+.state-orange .tile-value{color:var(--orange)}
+.state-gray{border-color:var(--gray);background:var(--gray-bg)}
+.state-gray .tile-value{color:var(--gray)}
+.settings-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:600px;margin:0 auto}
+.form-group{margin-bottom:16px}
+label{display:block;font-size:13px;margin-bottom:6px;color:var(--text-secondary)}
+input,select{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:white}
+.btn{background:#238636;color:white;border:none;padding:12px;border-radius:6px;cursor:pointer;width:100%;font-weight:600}
+.btn:hover{background:#2ea043}
+</style>
 </head>
 <body>
-    <div class="grid" id="dashboard"></div>
-    <div id="error-msg" class="error"></div>
-    <div class="settings-panel">
-        <h3>Settings</h3>
-        <div class="form-group">
-            <label>Data Source</label>
-            <select id="source" onchange="updateUI()">
-                <option value="google">Google Sheets (Recommended)</option>
-                <option value="twelve">Twelve Data API</option>
-            </select>
-        </div>
-        <div class="form-group" id="google-grp">
-            <label>Sheet ID or URL</label>
-            <input type="text" id="sheet-id">
-        </div>
-        <div class="form-group" id="twelve-grp" style="display:none">
-            <label>Twelve Data API Key (For SPY 20D SMA)</label>
-            <input type="password" id="api-key">
-        </div>
-        <button class="btn" onclick="save()">Save & Connect</button>
-    </div>
-    <script>
-        function updateUI() {
-            const src = document.getElementById('source').value;
-            document.getElementById('google-grp').style.display = src === 'google' ? 'block' : 'none';
-            document.getElementById('twelve-grp').style.display = src === 'twelve' ? 'block' : 'none';
-        }
-        function save() {
-            const data = { 
-                source: document.getElementById('source').value, 
-                sheet: document.getElementById('sheet-id').value, 
-                key: document.getElementById('api-key').value 
-            };
-            localStorage.setItem('market_settings', JSON.stringify(data));
-            location.reload();
-        }
+<div class="header"><h1>Market Regime Dashboard v2</h1><p id="timestamp" class="tile-detail"></p></div>
+<div class="grid" id="dashboard"></div>
+<div class="settings-panel">
+<h3>Settings</h3>
+<div class="form-group"><label>Data Source</label><select id="source" onchange="toggleUI()"><option value="google">Google Sheets (Recommended)</option><option value="twelve">Twelve Data API</option></select></div>
+<div class="form-group" id="google-grp"><label>Google Sheet ID or URL</label><input type="text" id="sheet-id" placeholder="Paste Sheet ID here"></div>
+<div class="form-group" id="twelve-grp" style="display:none"><label>Twelve Data API Key (For SPY 20D SMA)</label><input type="password" id="api-key"></div>
+<button class="btn" onclick="save()">Save & Connect</button>
+</div>
+<script>
+function toggleUI(){const s=document.getElementById('source').value;document.getElementById('google-grp').style.display=s==='google'?'block':'none';document.getElementById('twelve-grp').style.display=s==='twelve'?'block':'none'}
+function save(){const d={source:document.getElementById('source').value,sheet:document.getElementById('sheet-id').value,key:document.getElementById('api-key').value};localStorage.setItem('market_settings',JSON.stringify(d));location.reload()}
 
-        async function fetchSpyData(key) {
-            try {
-                // Simplest possible fetch
-                const pResp = await fetch(`https://api.twelvedata.com/price?symbol=SPY&apikey=${key}`);
-                const pData = await pResp.json();
-                if (pData.status === 'error') throw new Error(pData.message);
+async function fetchSheetData(sheetId){try{const url=`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;const r=await fetch(url);const t=await r.text();const j=JSON.parse(t.substring(47,t.length-2));const rows=j.table.rows;return{t2108:rows[0]?.c[1]?.v||0,spyPrice:rows[1]?.c[1]?.v||0,vix:rows[2]?.c[1]?.v||0,dxy:rows[3]?.c[1]?.v||0,dxy50d:rows[4]?.c[1]?.v||0,yield10:rows[5]?.c[1]?.v||0}}catch(e){return null}}
 
-                const sResp = await fetch(`https://api.twelvedata.com/sma?symbol=SPY&interval=1day&time_period=20&apikey=${key}`);
-                const sData = await sResp.json();
-                if (sData.status === 'error') throw new Error(sData.message);
+async function fetchSpySma(key){try{const r=await fetch(`https://api.twelvedata.com/sma?symbol=SPY&interval=1day&time_period=20&apikey=${key}`);const d=await r.json();if(d.status==='error')throw new Error(d.message);return parseFloat(d.values[0].sma)}catch(e){return null}}
 
-                const price = parseFloat(pData.price);
-                const sma = parseFloat(sData.values[0].sma);
+function setTile(id,state,value,detail){const t=document.getElementById(id);t.className='tile state-'+state;t.querySelector('.tile-value').innerText=value;t.querySelector('.tile-detail').innerText=detail||''}
 
-                return {
-                    label: 'SPY 20D Trend',
-                    value: price > sma ? 'SPY > 20D' : 'SPY < 20D',
-                    detail: `Price: ${price.toFixed(2)} | 20D SMA: ${sma.toFixed(2)}`,
-                    state: price > sma ? 'green' : 'red'
-                };
-            } catch (e) {
-                return { label: 'SPY 20D Trend', value: 'API Error', detail: e.message, state: 'red' };
-            }
-        }
+function updateDashboard(data,spySma){const t2108=data.t2108;if(t2108<20)setTile('t1','red','Crash (<20)','T2108: '+t2108);else if(t2108>80)setTile('t1','orange','Hot (>80)','T2108: '+t2108);else setTile('t1','gray','Normal (20-80)','T2108: '+t2108);
+if(spySma&&data.spyPrice){if(data.spyPrice>spySma)setTile('t2','green','SPY > 20D',`Price: ${data.spyPrice.toFixed(2)} | 20D: ${spySma.toFixed(2)}`);else setTile('t2','red','SPY < 20D',`Price: ${data.spyPrice.toFixed(2)} | 20D: ${spySma.toFixed(2)}`)}
+if(data.vix<20)setTile('t3','green','VIX < 20 (Low)','VIX: '+data.vix.toFixed(1));else setTile('t3','red','VIX >= 20 (High)','VIX: '+data.vix.toFixed(1));
+const spyUp=data.spyPrice>spySma;const dxyDown=data.dxy<data.dxy50d;const yieldDown=data.yield10<4.3;let score=0;if(spyUp)score++;if(dxyDown)score++;if(yieldDown)score++;const parts=[];parts.push('SPY '+(spyUp?'↑':'↓'));parts.push('DXY '+(dxyDown?'↓':'↑'));parts.push('10Y '+(yieldDown?'↓':'↑'));if(score===3)setTile('t4','green','Macro Risk-ON',parts.join(' · '));else if(score===2)setTile('t4','yellow','Macro Mixed',parts.join(' · '));else setTile('t4','red','Macro Risk-OFF',parts.join(' · '));
+if(data.dxy<data.dxy50d&&data.dxy<104)setTile('t5','green','Tailwind',`DXY: ${data.dxy.toFixed(1)} | 50D: ${data.dxy50d.toFixed(1)}`);else if(data.dxy>data.dxy50d&&data.dxy>104)setTile('t5','red','Headwind',`DXY: ${data.dxy.toFixed(1)} | 50D: ${data.dxy50d.toFixed(1)}`);else setTile('t5','gray','Neutral',`DXY: ${data.dxy.toFixed(1)} | 50D: ${data.dxy50d.toFixed(1)}`);
+const cycle='RISK_OFF';if(cycle==='RISK_ON')setTile('t6','green','Risk-ON','');else if(cycle==='RISK_OFF')setTile('t6','red','Risk-OFF','');else setTile('t6','gray','Neutral','');
+const days=19;let st,ph;if(days<=10){st='green';ph='Early'}else if(days<=20){st='yellow';ph='Middle'}else{st='orange';ph='Late'}
+setTile('t7',st,`Day ${days} - ${ph}`,'Since: 2026-02-25');
+let rScore=0;if(spyUp)rScore++;if(yieldDown)rScore++;if(dxyDown)rScore++;if(data.vix<20)rScore++;let rst,rlbl;if(rScore<=1){rst='red';rlbl='Defensive'}else if(rScore===2){rst='yellow';rlbl='Balanced'}else{rst='green';rlbl='Offensive'}
+const checks=[];checks.push('SPY%:'+(spyUp?'✓':'✗'));checks.push('10YΔ:'+(yieldDown?'✓':'✗'));checks.push('DXY%:'+(dxyDown?'✓':'✗'));checks.push('VIX<20:'+(data.vix<20?'✓':'✗'));setTile('t8',rst,`Score ${rScore}/4 - ${rlbl}`,checks.join(' '))}
 
-        window.onload = async () => {
-            const s = JSON.parse(localStorage.getItem('market_settings')) || {};
-            if(s.source) document.getElementById('source').value = s.source;
-            if(s.sheet) document.getElementById('sheet-id').value = s.sheet;
-            if(s.key) document.getElementById('api-key').value = s.key;
-            updateUI();
-
-            const tiles = [];
-            tiles.push({label:'T2108 Zone', value:'Manual', detail:'Update in sheet', state:'gray'});
-
-            if (s.key) {
-                const spyTile = await fetchSpyData(s.key);
-                tiles.push(spyTile);
-            } else {
-                tiles.push({label:'SPY 20D Trend', value:'No Key', detail:'Enter Key below', state:'gray'});
-            }
-
-            tiles.push({label:'VIX Regime', value:'Sheet Data', detail:'Wait for Sheet ID', state:'gray'});
-            tiles.push({label:'Risk-ON Score', value:'Wait...', detail:'Calculating...', state:'gray'});
-
-            document.getElementById('dashboard').innerHTML = tiles.map(t => `
-                <div class="tile state-${t.state}">
-                    <div class="tile-label">${t.label}</div>
-                    <div class="tile-value">${t.value}</div>
-                    <div class="tile-detail">${t.detail}</div>
-                </div>
-            `).join('');
-        }
-    </script>
+window.onload=async()=>{const s=JSON.parse(localStorage.getItem('market_settings'))||{};if(s.source)document.getElementById('source').value=s.source;if(s.sheet)document.getElementById('sheet-id').value=s.sheet;if(s.key)document.getElementById('api-key').value=s.key;toggleUI();
+document.getElementById('timestamp').innerText='Last updated: '+new Date().toLocaleString();
+document.getElementById('dashboard').innerHTML=['t2108','spy20d','vix','macro','dxy','cycle','age','riskon'].map((lbl,i)=>`<div class="tile state-gray" id="t${i+1}"><div class="tile-label">${lbl.toUpperCase()}</div><div class="tile-value">Loading...</div><div class="tile-detail"></div></div>`).join('');
+const data=s.sheet?await fetchSheetData(s.sheet):null;const spySma=s.key?await fetchSpySma(s.key):null;if(data)updateDashboard(data,spySma)}
+</script>
 </body>
 </html>

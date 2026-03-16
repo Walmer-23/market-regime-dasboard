@@ -11,12 +11,10 @@
             --text-primary: #e8eaed; --text-secondary: #9aa0a6; --text-muted: #6b7280;
             --green: #16a34a; --green-bg: rgba(22, 163, 74, 0.15);
             --red: #dc2626; --red-bg: rgba(220, 38, 38, 0.15);
-            --yellow: #ca8a04; --yellow-bg: rgba(202, 138, 4, 0.15);
-            --orange: #ea580c; --orange-bg: rgba(234, 88, 12, 0.15);
             --gray: #6b7280; --gray-bg: rgba(107, 114, 128, 0.12);
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-primary); padding: 24px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto 40px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto 40px; }
         .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
         .tile-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; }
         .tile-value { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
@@ -48,7 +46,7 @@
             <input type="text" id="sheet-id">
         </div>
         <div class="form-group" id="twelve-grp" style="display:none">
-            <label>Twelve Data API Key</label>
+            <label>Twelve Data API Key (Required for SPY 20D SMA)</label>
             <input type="password" id="api-key">
         </div>
         <button class="btn" onclick="save()">Save & Connect</button>
@@ -60,17 +58,23 @@
             document.getElementById('twelve-grp').style.display = src === 'twelve' ? 'block' : 'none';
         }
         function save() {
-            const data = { source: document.getElementById('source').value, sheet: document.getElementById('sheet-id').value, key: document.getElementById('api-key').value };
+            const data = { 
+                source: document.getElementById('source').value, 
+                sheet: document.getElementById('sheet-id').value, 
+                key: document.getElementById('api-key').value 
+            };
             localStorage.setItem('market_settings', JSON.stringify(data));
             location.reload();
         }
 
-        async function fetchTwelveData(key) {
+        async function fetchSpyTrend(key) {
             try {
-                const resp = await fetch(`https://api.twelvedata.com/complex_data?apikey=${key}`, {
+                // Fetch SPY price and 20D SMA in one call
+                const url = `https://api.twelvedata.com/complex_data?apikey=${key}`;
+                const resp = await fetch(url, {
                     method: 'POST',
                     body: JSON.stringify({
-                        symbols: ["SPY", "VIX"],
+                        symbols: ["SPY"],
                         intervals: ["1day"],
                         methods: [
                             {name: "price"},
@@ -78,24 +82,26 @@
                         ]
                     })
                 });
-                const data = await resp.json();
-                if(data.status === 'error') throw new Error(data.message);
+                const result = await resp.json();
                 
-                const spy = data.data.find(d => d.symbol === 'SPY');
-                const vix = data.data.find(d => d.symbol === 'VIX');
-                
-                const spyPrice = parseFloat(spy.methods.find(m => m.name === 'price').price);
-                const spySma = parseFloat(spy.methods.find(m => m.name === 'sma').values[0].sma);
-                const vixPrice = parseFloat(vix.methods.find(m => m.name === 'price').price);
+                if (result.status === 'error' || !result.data || !result.data[0]) {
+                    throw new Error(result.message || "Invalid API response");
+                }
 
-                return [
-                    {label:'SPY 20D Trend', value: spyPrice > spySma ? 'SPY > 20D' : 'SPY < 20D', detail: `SPY: ${spyPrice.toFixed(2)} | 20D: ${spySma.toFixed(2)}`, state: spyPrice > spySma ? 'green' : 'red'},
-                    {label:'VIX Regime', value: vixPrice < 20 ? 'Low (<20)' : 'High (>=20)', detail: `VIX: ${vixPrice.toFixed(1)}`, state: vixPrice < 20 ? 'green' : 'red'}
-                ];
+                const data = result.data[0];
+                const price = parseFloat(data.methods.find(m => m.name === 'price').price);
+                const sma = parseFloat(data.methods.find(m => m.name === 'sma').values[0].sma);
+
+                return {
+                    label: 'SPY 20D Trend',
+                    value: price > sma ? 'SPY > 20D' : 'SPY < 20D',
+                    detail: `Price: ${price.toFixed(2)} | 20D SMA: ${sma.toFixed(2)}`,
+                    state: price > sma ? 'green' : 'red'
+                };
             } catch (e) {
-                document.getElementById('error-msg').innerText = 'API Error: ' + e.message;
+                document.getElementById('error-msg').innerText = 'Twelve Data Error: ' + e.message;
                 document.getElementById('error-msg').style.display = 'block';
-                return [];
+                return { label: 'SPY 20D Trend', value: 'Error', detail: e.message, state: 'red' };
             }
         }
 
@@ -106,19 +112,31 @@
             if(s.key) document.getElementById('api-key').value = s.key;
             updateUI();
 
-            let tiles = [
-                {label:'T2108 Zone', value:'Manual Entry', detail:'Update in sheet', state:'gray'},
-                {label:'Risk-ON Score', value:'Wait...', detail:'Calculating...', state:'gray'}
-            ];
+            const dashboard = document.getElementById('dashboard');
+            const tiles = [];
 
-            if(s.source === 'twelve' && s.key) {
-                const apiTiles = await fetchTwelveData(s.key);
-                tiles = [...tiles, ...apiTiles];
-            } else if (s.source === 'google' && s.sheet) {
-                tiles.push({label:'Source', value:'Google Sheets', detail:'Fetching...', state:'gray'});
+            // T2108 (Static for now, usually from Sheet)
+            tiles.push({label:'T2108 Zone', value:'Manual Entry', detail:'Update in sheet', state:'gray'});
+
+            // SPY 20D Trend (From Twelve Data)
+            if (s.key) {
+                const spyTile = await fetchSpyTrend(s.key);
+                tiles.push(spyTile);
+            } else {
+                tiles.push({label:'SPY 20D Trend', value:'No Key', detail:'Enter Twelve Data API Key', state:'gray'});
             }
 
-            document.getElementById('dashboard').innerHTML = tiles.map(t => `<div class="tile state-${t.state}"><div class="tile-label">${t.label}</div><div class="tile-value">${t.value}</div><div class="tile-detail">${t.detail}</div></div>`).join('');
+            // Other placeholders
+            tiles.push({label:'VIX Regime', value:'Sheet Data', detail:'Fetching...', state:'gray'});
+            tiles.push({label:'Risk-ON Score', value:'Balanced', detail:'Wait for data...', state:'gray'});
+
+            dashboard.innerHTML = tiles.map(t => `
+                <div class="tile state-${t.state}">
+                    <div class="tile-label">${t.label}</div>
+                    <div class="tile-value">${t.value}</div>
+                    <div class="tile-detail">${t.detail}</div>
+                </div>
+            `).join('');
         }
     </script>
 </body>
